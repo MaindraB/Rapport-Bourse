@@ -140,58 +140,44 @@ def color_rsi(rsi):
     if rsi <= 30: return f'<span style="color:#16a34a;font-weight:bold">{rsi}</span>'
     return str(rsi)
 
-
 def create_top5_infographic(df_top5, filename="top5_favorable.png"):
-    fig = plt.figure(figsize=(14, 10), facecolor="#0f172a")
-    gs = GridSpec(6, 2, figure=fig, height_ratios=[0.12, 1, 1, 1, 1, 1], hspace=0.35, wspace=0.25)
+    """Infographie simplifiée et stable pour GitHub Actions"""
+    import matplotlib
+    matplotlib.use('Agg')  # Important pour GitHub Actions
+    import matplotlib.pyplot as plt
 
-    ax_title = fig.add_subplot(gs[0, :])
-    ax_title.set_facecolor("#0f172a")
-    ax_title.axis("off")
-    ax_title.text(0.5, 0.7, "TOP 5 TICKERS LES PLUS FAVORABLES À L'ACHAT",
-                  ha="center", va="center", fontsize=20, fontweight="bold", color="white")
-    ax_title.text(0.5, 0.25, datetime.now().strftime("%d %B %Y"),
-                  ha="center", va="center", fontsize=12, color="#94a3b8")
+    fig, axes = plt.subplots(5, 1, figsize=(10, 12), facecolor="#0f172a")
+    fig.suptitle("TOP 5 TICKERS LES PLUS FAVORABLES À L'ACHAT\n" + datetime.now().strftime("%d/%m/%Y"),
+                 color="white", fontsize=16, fontweight="bold", y=0.98)
 
     for i, (_, row) in enumerate(df_top5.iterrows()):
-        ax_info = fig.add_subplot(gs[i+1, 0])
-        ax_info.set_facecolor("#1e293b")
-        ax_info.axis("off")
+        ax = axes[i]
+        ax.set_facecolor("#1e293b")
 
-        ax_info.text(0.05, 0.75, f"#{i+1}", fontsize=22, fontweight="bold",
-                     color="#22c55e", transform=ax_info.transAxes)
-        ax_info.text(0.18, 0.78, row["Ticker"], fontsize=18, fontweight="bold",
-                     color="white", transform=ax_info.transAxes)
-        ax_info.text(0.18, 0.55, row["Name"], fontsize=10, color="#94a3b8",
-                     transform=ax_info.transAxes)
-
+        # Titre de chaque ticker
         score_color = "#22c55e" if row["Score10"] >= 7.5 else "#eab308" if row["Score10"] >= 5.5 else "#f97316"
-        ax_info.text(0.05, 0.25, f"Score Achat : {row['Score10']}/10",
-                     fontsize=14, fontweight="bold", color=score_color,
-                     transform=ax_info.transAxes)
+        title = f"#{i+1}  {row['Ticker']}  |  Score: {row['Score10']}/10  |  {row['Signal']}"
+        ax.set_title(title, color=score_color, fontsize=13, fontweight="bold", loc="left", pad=8)
 
-        metrics = (f"RSI {row['RSI']}  |  Dist SMA200 {row['Dist SMA200%']}%  |  "
-                   f"Vol 5j {row['Vol 5j %']}%  |  {row['Signal']}")
-        ax_info.text(0.05, 0.08, metrics, fontsize=9, color="#cbd5e1",
-                     transform=ax_info.transAxes)
+        # Mini graphique de prix
+        prices = row["hist"]["Close"].values
+        ax.plot(prices, color="#22c55e", linewidth=2)
+        ax.fill_between(range(len(prices)), prices, alpha=0.2, color="#22c55e")
 
-        ax_chart = fig.add_subplot(gs[i+1, 1])
-        ax_chart.set_facecolor("#1e293b")
-        prices = row["hist"]["Close"]
-        ax_chart.plot(prices.values, color="#22c55e", linewidth=2)
-        ax_chart.fill_between(range(len(prices)), prices.values, alpha=0.15, color="#22c55e")
-        ax_chart.set_xticks([])
-        ax_chart.set_yticks([])
-        for spine in ax_chart.spines.values():
+        # Nettoyage
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
             spine.set_visible(False)
-        ax_chart.text(0.98, 0.9, f"${row['Price']}", transform=ax_chart.transAxes,
-                      ha="right", va="top", fontsize=11, fontweight="bold", color="white")
-        color_chg = "#22c55e" if row["Change%"] >= 0 else "#ef4444"
-        ax_chart.text(0.98, 0.7, f"{row['Change%']:+.1f}%", transform=ax_chart.transAxes,
-                      ha="right", va="top", fontsize=10, color=color_chg)
 
-    plt.savefig(filename, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+        # Infos sous le graphique
+        info_text = f"Prix: ${row['Price']}   |   RSI: {row['RSI']}   |   Dist SMA200: {row['Dist SMA200%']}%   |   Vol 5j: {row['Vol 5j %']}%"
+        ax.text(0.01, -0.15, info_text, transform=ax.transAxes, color="#94a3b8", fontsize=9)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig(filename, dpi=120, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close()
+    print(f"Infographie sauvegardée : {filename}")
     return filename
 
 
